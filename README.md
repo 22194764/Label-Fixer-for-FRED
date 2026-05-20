@@ -209,3 +209,25 @@ Example:
 ```
 
 Coordinates are in pixels relative to the sensor resolution. Timestamps correspond to the midpoint sampling within each 1/30 s window.
+
+---
+
+## Citation
+
+This tool is free to use under the MIT licence. If you use it in your research or project, please give credit by citing or acknowledging this repository:
+
+```
+Avinash Kumaran. Label Fixer — browser-based annotation correction tool for event camera data.
+https://github.com/avinashkumaran/label-fixer
+```
+
+If your work also uses the FRED dataset, please cite the original authors:
+
+```bibtex
+@misc{fred2024,
+  author    = {Cannici, Marco and Pinchetti, Luca and Cacciabaudo, Simone and Matteucci, Matteo},
+  title     = {FRED: A Framework for Drone Detection using Event Cameras},
+  year      = {2024},
+  url       = {https://github.com/miccunifi/FRED}
+}
+```
