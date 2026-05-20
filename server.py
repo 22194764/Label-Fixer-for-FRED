@@ -279,6 +279,28 @@ def api_revert_frame(split, seq, fi):
     return jsonify({'ok': True})
 
 
+@app.route('/api/revert_seq/<split>/<seq>', methods=['POST'])
+def api_revert_seq(split, seq):
+    """Delete temp file, restore coordinates.txt from .bak (if it exists), return fresh rows."""
+    d = seq_dir(split, seq)
+    if not d.exists():
+        abort(404)
+
+    tp   = temp_path(split, seq)
+    orig = orig_path(split, seq)
+    bak  = bak_path(split, seq)
+
+    if tp.exists():
+        tp.unlink()
+
+    if bak.exists():
+        shutil.copy2(bak, orig)
+
+    rows = _parse_orig(orig)
+    return jsonify({'ok': True, 'n_annotations': len(rows),
+                    'rows': rows})
+
+
 @app.route('/api/save/<split>/<seq>', methods=['POST'])
 def api_save(split, seq):
     """Commit temp JSON → coordinates.txt (creates .bak first)."""

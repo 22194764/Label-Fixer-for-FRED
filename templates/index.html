@@ -31,6 +31,7 @@
         <button id="btn-2x">2x</button>
         <button id="btn-4x">4x</button>
         <button id="btn-memorise" title="Memorise mode (M) — click to stamp last annotated frame&#39;s biggest box">Memorise</button>
+        <button id="btn-expand-all" title="Expand all annotations from this frame onwards by 10%">Expand All</button>
       </div>
       <div id="toolbar-center">
         <span id="seq-title">No sequence selected</span>
@@ -39,6 +40,7 @@
         <button id="btn-help" title="Keyboard shortcuts &amp; help (?)">?</button>
         <button id="btn-erase-frame" title="Erase all boxes in this frame (R)">Erase</button>
         <button id="btn-revert-frame" title="Revert this frame to original GT">Revert frame</button>
+        <button id="btn-revert-seq" title="Revert entire sequence to original coordinates.txt">Revert Seq</button>
         <button id="btn-save" title="Save all changes to coordinates.txt">Save</button>
         <button id="btn-reload" title="Reload annotations from disk">Reload</button>
         <span id="save-status"></span>
@@ -125,6 +127,8 @@
       <table>
         <tr><td><strong>Save</strong></td><td>Commit all changes to <code>coordinates.txt</code> (creates <code>.bak</code> on first save)</td></tr>
         <tr><td><strong>Revert frame</strong></td><td>Reset current frame to original GT</td></tr>
+        <tr><td><strong>Revert Seq</strong></td><td>Discard all unsaved changes and restore entire sequence to original GT</td></tr>
+        <tr><td><strong>Expand All</strong></td><td>Expand annotations in current frame and all subsequent frames by 10%</td></tr>
         <tr><td><strong>Reload</strong></td><td>Reload all annotations from disk</td></tr>
       </table>
 

@@ -160,7 +160,9 @@ This is particularly useful for filling gaps when a drone is continuously visibl
 | Button | Action |
 |---|---|
 | **Erase** (`R`) | Remove all boxes from the current frame |
+| **Expand All** | Expand annotations in the current frame and all subsequent frames by 10% |
 | **Revert frame** | Reset the current frame to the original `coordinates.txt` (or `.bak` if it exists) |
+| **Revert Seq** | Discard all unsaved changes and restore the entire sequence to original GT |
 | **Reload** | Reload all annotations from the temp file on disk |
 | **Save** | Commit all changes to `coordinates.txt` (a `.bak` backup is created on first save) |
 

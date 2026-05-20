@@ -31,14 +31,16 @@ const elDroneBar   = document.getElementById('drone-buttons');
 const elBtnPlay    = document.getElementById('btn-play');
 const elBtn2x       = document.getElementById('btn-2x');
 const elBtn4x       = document.getElementById('btn-4x');
-const elBtnMemorise = document.getElementById('btn-memorise');
-const elBtnPrev    = document.getElementById('btn-prev');
-const elBtnNext    = document.getElementById('btn-next');
-const elBtnHelp    = document.getElementById('btn-help');
-const elBtnErase   = document.getElementById('btn-erase-frame');
-const elBtnSave    = document.getElementById('btn-save');
-const elBtnReload  = document.getElementById('btn-reload');
-const elBtnRevert  = document.getElementById('btn-revert-frame');
+const elBtnMemorise   = document.getElementById('btn-memorise');
+const elBtnExpandAll  = document.getElementById('btn-expand-all');
+const elBtnPrev       = document.getElementById('btn-prev');
+const elBtnNext       = document.getElementById('btn-next');
+const elBtnHelp       = document.getElementById('btn-help');
+const elBtnErase      = document.getElementById('btn-erase-frame');
+const elBtnSave       = document.getElementById('btn-save');
+const elBtnReload     = document.getElementById('btn-reload');
+const elBtnRevert     = document.getElementById('btn-revert-frame');
+const elBtnRevertSeq  = document.getElementById('btn-revert-seq');
 const elSaveStatus = document.getElementById('save-status');
 
 const elViewerOuter  = document.getElementById('viewer-outer');
@@ -466,10 +468,9 @@ function onMouseUp(e) {
 // so Save can await this and be sure the temp file is up to date.
 let _pushQueue = Promise.resolve();
 
-function pushFrameUpdate() {
+function pushFrameUpdate(fi = S.fi) {
   if (!S.seqData) return;
   const { split, seq } = S.seqData;
-  const fi = S.fi;
   const boxes = (S.frames[fi] || []).map(b => ({
     x1: Math.round(b.x1 * 10) / 10,
     y1: Math.round(b.y1 * 10) / 10,
@@ -573,9 +574,9 @@ elViewerOuter.addEventListener('wheel', (e) => {
 
 // ── Expand boxes ──────────────────────────────────────────────────────────────
 
-function expandBoxes() {
-  const boxes = S.frames[S.fi];
-  if (!boxes || !boxes.length) return;
+function _expandFrame(fi) {
+  const boxes = S.frames[fi];
+  if (!boxes || !boxes.length) return false;
   boxes.forEach(b => {
     const cx = (b.x1 + b.x2) / 2;
     const cy = (b.y1 + b.y2) / 2;
@@ -586,8 +587,20 @@ function expandBoxes() {
     b.x2 = cx + w / 2;
     b.y2 = cy + h / 2;
   });
-  drawCanvas();
-  pushFrameUpdate();
+  return true;
+}
+
+function expandBoxes() {
+  if (_expandFrame(S.fi)) { drawCanvas(); pushFrameUpdate(); }
+}
+
+function expandAllFromCurrent() {
+  if (!S.seqData) return;
+  let changed = false;
+  for (let f = S.fi; f < S.seqData.n_frames; f++) {
+    if (_expandFrame(f)) { pushFrameUpdate(f); changed = true; }
+  }
+  if (changed) drawCanvas();
 }
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
@@ -660,6 +673,7 @@ elBtnPlay.addEventListener('click',  togglePlay);
 elBtn2x.addEventListener('click',       () => setSpeed(S.playSpeed === 2 ? 1 : 2));
 elBtn4x.addEventListener('click',       () => setSpeed(S.playSpeed === 4 ? 1 : 4));
 elBtnMemorise.addEventListener('click', toggleMemorise);
+elBtnExpandAll.addEventListener('click', expandAllFromCurrent);
 elBtnPrev.addEventListener('click',  () => seekToFrame(S.fi - 1));
 elBtnNext.addEventListener('click',  () => seekToFrame(S.fi + 1));
 
@@ -733,6 +747,31 @@ function updateSaveStatus(msg, cls) {
   elSaveStatus.className   = cls || '';
   if (msg && cls === 'ok') setTimeout(() => { elSaveStatus.textContent = ''; }, 3000);
 }
+
+elBtnRevertSeq.addEventListener('click', async () => {
+  if (!S.seqData) return;
+  if (!confirm('Revert entire sequence to original coordinates.txt? All unsaved changes will be lost.')) return;
+  const { split, seq } = S.seqData;
+  await _pushQueue;
+  const res = await fetch(`/api/revert_seq/${split}/${seq}`, { method: 'POST' }).then(r => r.json());
+  if (res.ok) {
+    S.frames = {};
+    for (const r of res.rows) {
+      const fi = Math.floor(r.t / S.seqData.window_s);
+      if (!S.frames[fi]) S.frames[fi] = [];
+      S.frames[fi].push({ ...r });
+    }
+    S.dirty       = false;
+    S.selectedBox = null;
+    drawCanvas();
+    updateFrameLabel();
+    updateTimeBar();
+    updateSaveStatus('Reverted seq', 'ok');
+    const s = S.seqList.find(s => s.split === split && s.seq === seq);
+    if (s) s.has_temp = false;
+    renderSeqList();
+  }
+});
 
 // ── Time bar interaction ──────────────────────────────────────────────────────
 

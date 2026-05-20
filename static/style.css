@@ -119,6 +119,8 @@ button:disabled { opacity: 0.4; cursor: default; }
 #btn-save:hover { background: #265226; }
 #btn-revert-frame { background: #3a1e1e; color: #ef9a9a; }
 #btn-revert-frame:hover { background: #4a2222; }
+#btn-revert-seq { background: #3a1e1e; color: #ef9a9a; }
+#btn-revert-seq:hover { background: #4a2222; }
 #btn-erase-frame { background: #3a1e1e; color: #ef9a9a; }
 #btn-erase-frame:hover { background: #4a2222; }
 #btn-2x, #btn-4x { min-width: 32px; }
