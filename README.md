@@ -35,7 +35,22 @@ Dependencies (`requirements.txt`):
 flask>=3.0
 opencv-python>=4.8
 numpy>=1.24
+h5py>=3.8
 ```
+
+### Metavision SDK — ECF codec (FRED / Prophesee Gen4 cameras)
+
+The `events.hdf5` files in the FRED dataset are recorded with a Prophesee Gen4 event camera and compressed using Prophesee's proprietary **ECF (Event Compact Format)** HDF5 codec. Plain `h5py` cannot decompress these files without the codec plugin installed.
+
+To read them you need the **Metavision SDK** from Prophesee, which registers the ECF filter with HDF5 automatically on import:
+
+```bash
+pip install metavision-sdk-base
+```
+
+> The SDK is available on PyPI for Linux (x86-64) and may require a compatible platform. See the [Prophesee HDF5 format documentation](https://docs.prophesee.ai/stable/data/file_formats/hdf5.html) for details on the file format and platform-specific install instructions.
+
+If you are working with a pre-converted dataset where `events.hdf5` files have already been extracted to a standard uncompressed format, this step is not needed.
 
 ---
 
@@ -72,13 +87,7 @@ Expected dataset layout:
 
 Videos are optional — sequences without a matching MP4 show a grey canvas but are still fully editable.
 
-To render videos from your event data, use the companion script:
-
-```bash
-python analysis/render_video_with_GT.py
-# or for a single sequence:
-python analysis/render_video_with_GT.py --seq 34
-```
+To render videos from your event data, use the companion script included in this repo (see [Rendering videos](#rendering-videos) below).
 
 ---
 
@@ -141,6 +150,48 @@ This is particularly useful for filling gaps when a drone is continuously visibl
 | **Save** | Commit all changes to `coordinates.txt` (a `.bak` backup is created on first save) |
 
 Changes are pushed to a `coordinates_temp.json` file per sequence as you edit. Nothing is written to `coordinates.txt` until you click **Save**.
+
+---
+
+## Rendering videos
+
+`render_video_with_GT.py` reads `events.hdf5` and `coordinates.txt` for each sequence and writes an MP4 where event frames are overlaid with colour-coded bounding boxes. These MP4s are what the Label Fixer viewer plays.
+
+Videos are named `{split}_{seq}_GT.mp4` and written to a `videos_{split}_GT/` folder next to the script by default, which is exactly where `server.py` expects to find them.
+
+### Render all sequences in a split
+
+```bash
+python render_video_with_GT.py --dataset /path/to/dataset --split test_equal_duration
+```
+
+### Render a single sequence
+
+```bash
+python render_video_with_GT.py --dataset /path/to/dataset --split test_equal_duration --seq 34
+```
+
+### Custom output directory
+
+```bash
+python render_video_with_GT.py --dataset /path/to/dataset --split test_equal_duration \
+    --out-dir /path/to/output/videos
+```
+
+> If you use `--out-dir`, update `VIDEOS_DIR` in `server.py` to match.
+
+### All arguments
+
+| Argument | Required | Default | Description |
+|---|---|---|---|
+| `--dataset` | yes | — | Path to dataset root (contains split sub-folders) |
+| `--split` | no | `test_equal_duration` | Split sub-folder name |
+| `--seq` | no | all | Single sequence ID to render |
+| `--out-dir` | no | `videos_{split}_GT/` next to script | Output directory for MP4s |
+| `--fps` | no | `30` | Output video frame rate |
+| `--out` | no | — | Explicit output path (single-seq mode only) |
+
+Already-rendered videos are skipped automatically.
 
 ---
 
