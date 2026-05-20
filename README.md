@@ -2,6 +2,8 @@
 
 A lightweight browser-based tool for reviewing and correcting bounding-box annotations on event camera data, frame by frame.
 
+![Label Fixer GUI](static/images/GUI.png)
+
 ---
 
 ## Motivation
