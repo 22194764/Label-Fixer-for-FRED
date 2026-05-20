@@ -27,6 +27,7 @@ _caps: dict = {}       # (split, seq) -> {'cap', 'last_fi', 'lock'}
 ROOT        = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = ROOT / 'dataset'
 VIDEOS_DIR  = ROOT / 'analysis' / 'videos_test_equal_duration_GT'
+SPLIT       = 'test_equal_duration'
 WINDOW_S    = 1.0 / 30.0
 
 DRONE_NAMES = [
@@ -157,27 +158,26 @@ def index():
 
 @app.route('/api/sequences')
 def api_sequences():
-    """List all splits + sequence IDs that have a coordinates.txt or events.hdf5."""
+    """List sequence IDs from the configured SPLIT folder."""
     result = []
-    for split_dir in sorted(DATASET_DIR.iterdir()):
-        if not split_dir.is_dir():
+    split_dir = DATASET_DIR / SPLIT
+    if not split_dir.is_dir():
+        return jsonify(result)
+    for s in sorted(split_dir.iterdir(), key=lambda p: p.name):
+        if not s.is_dir():
             continue
-        split = split_dir.name
-        for s in sorted(split_dir.iterdir(), key=lambda p: p.name):
-            if not s.is_dir():
-                continue
-            if not (s / 'events.hdf5').exists() and not (s / 'coordinates.txt').exists():
-                continue
-            has_video = video_path(split, s.name).exists()
-            has_gt    = orig_path(split, s.name).exists()
-            has_temp  = temp_path(split, s.name).exists()
-            result.append({
-                'split':     split,
-                'seq':       s.name,
-                'has_video': has_video,
-                'has_gt':    has_gt,
-                'has_temp':  has_temp,
-            })
+        if not (s / 'events.hdf5').exists() and not (s / 'coordinates.txt').exists():
+            continue
+        has_video = video_path(SPLIT, s.name).exists()
+        has_gt    = orig_path(SPLIT, s.name).exists()
+        has_temp  = temp_path(SPLIT, s.name).exists()
+        result.append({
+            'split':     SPLIT,
+            'seq':       s.name,
+            'has_video': has_video,
+            'has_gt':    has_gt,
+            'has_temp':  has_temp,
+        })
     return jsonify(result)
 
 

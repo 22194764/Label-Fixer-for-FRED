@@ -514,7 +514,11 @@ function _biggestBoxInFrame(fi) {
 
 function placeMemoriseBox(cx, cy) {
   if (!S.activeDrone) return;
-  const ref = _biggestBoxInFrame(S.fi - 1);
+  let ref = null;
+  for (let f = S.fi - 1; f >= 0; f--) {
+    ref = _biggestBoxInFrame(f);
+    if (ref) break;
+  }
   if (!ref) return;
   const w  = ref.x2 - ref.x1;
   const h  = ref.y2 - ref.y1;
