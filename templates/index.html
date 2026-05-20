@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Label Fixer</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Sidebar ── -->
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <span class="title">Label Fixer</span>
+      <input id="seq-search" type="text" placeholder="Filter…">
+    </div>
+    <div id="seq-list"></div>
+  </aside>
+
+  <!-- ── Main panel ── -->
+  <main id="main">
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+      <div id="toolbar-left">
+        <button id="btn-prev" title="Previous frame (←)">&#8592;</button>
+        <span id="frame-label">—</span>
+        <button id="btn-next" title="Next frame (→)">&#8594;</button>
+        <button id="btn-play" title="Play/Pause (Space)">&#9654;</button>
+        <button id="btn-2x">2x</button>
+        <button id="btn-4x">4x</button>
+        <button id="btn-memorise" title="Memorise mode (M) — click to stamp last frame&#39;s biggest box">Memorise</button>
+      </div>
+      <div id="toolbar-center">
+        <span id="seq-title">No sequence selected</span>
+      </div>
+      <div id="toolbar-right">
+        <button id="btn-erase-frame" title="Erase all boxes in this frame">Erase</button>
+        <button id="btn-revert-frame" title="Revert this frame to original GT">Revert frame</button>
+        <button id="btn-save" title="Save all changes to coordinates.txt">Save</button>
+        <button id="btn-reload" title="Reload annotations from disk">Reload</button>
+        <span id="save-status"></span>
+      </div>
+    </div>
+
+    <!-- Drone selector -->
+    <div id="drone-bar">
+      <span class="drone-bar-label">Active drone:</span>
+      <div id="drone-buttons"></div>
+      <span class="drone-bar-hint">Esc to deselect &nbsp;|&nbsp; Del to remove selected box</span>
+    </div>
+
+    <!-- Viewer -->
+    <div id="viewer-outer">
+      <div id="video-wrapper">
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Time bar -->
+    <div id="time-bar-outer">
+      <span id="time-current">0:00.0</span>
+      <div id="time-bar-track">
+        <div id="time-bar-fill"></div>
+        <div id="time-bar-thumb"></div>
+      </div>
+      <span id="time-total">0:00.0</span>
+    </div>
+
+    <!-- Frame info -->
+    <div id="frame-info">
+      <span id="frame-info-text">—</span>
+    </div>
+
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
