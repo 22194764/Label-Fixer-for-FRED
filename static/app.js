@@ -33,6 +33,7 @@ const elBtn2x       = document.getElementById('btn-2x');
 const elBtn4x       = document.getElementById('btn-4x');
 const elBtnMemorise   = document.getElementById('btn-memorise');
 const elBtnExpandAll  = document.getElementById('btn-expand-all');
+const elBtnReduceAll  = document.getElementById('btn-reduce-all');
 const elBtnPrev       = document.getElementById('btn-prev');
 const elBtnNext       = document.getElementById('btn-next');
 const elBtnHelp       = document.getElementById('btn-help');
@@ -574,14 +575,14 @@ elViewerOuter.addEventListener('wheel', (e) => {
 
 // ── Expand boxes ──────────────────────────────────────────────────────────────
 
-function _expandFrame(fi) {
+function _scaleFrame(fi, factor) {
   const boxes = S.frames[fi];
   if (!boxes || !boxes.length) return false;
   boxes.forEach(b => {
     const cx = (b.x1 + b.x2) / 2;
     const cy = (b.y1 + b.y2) / 2;
-    const w  = (b.x2 - b.x1) * 1.1;
-    const h  = (b.y2 - b.y1) * 1.1;
+    const w  = (b.x2 - b.x1) * factor;
+    const h  = (b.y2 - b.y1) * factor;
     b.x1 = cx - w / 2;
     b.y1 = cy - h / 2;
     b.x2 = cx + w / 2;
@@ -591,14 +592,23 @@ function _expandFrame(fi) {
 }
 
 function expandBoxes() {
-  if (_expandFrame(S.fi)) { drawCanvas(); pushFrameUpdate(); }
+  if (_scaleFrame(S.fi, 1.1)) { drawCanvas(); pushFrameUpdate(); }
 }
 
 function expandAllFromCurrent() {
   if (!S.seqData) return;
   let changed = false;
   for (let f = S.fi; f < S.seqData.n_frames; f++) {
-    if (_expandFrame(f)) { pushFrameUpdate(f); changed = true; }
+    if (_scaleFrame(f, 1.1)) { pushFrameUpdate(f); changed = true; }
+  }
+  if (changed) drawCanvas();
+}
+
+function reduceAllFromCurrent() {
+  if (!S.seqData) return;
+  let changed = false;
+  for (let f = S.fi; f < S.seqData.n_frames; f++) {
+    if (_scaleFrame(f, 1 / 1.1)) { pushFrameUpdate(f); changed = true; }
   }
   if (changed) drawCanvas();
 }
@@ -674,6 +684,7 @@ elBtn2x.addEventListener('click',       () => setSpeed(S.playSpeed === 2 ? 1 : 2
 elBtn4x.addEventListener('click',       () => setSpeed(S.playSpeed === 4 ? 1 : 4));
 elBtnMemorise.addEventListener('click', toggleMemorise);
 elBtnExpandAll.addEventListener('click', expandAllFromCurrent);
+elBtnReduceAll.addEventListener('click', reduceAllFromCurrent);
 elBtnPrev.addEventListener('click',  () => seekToFrame(S.fi - 1));
 elBtnNext.addEventListener('click',  () => seekToFrame(S.fi + 1));
 
