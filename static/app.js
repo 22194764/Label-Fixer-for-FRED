@@ -446,7 +446,7 @@ function onMouseUp(e) {
       const boxes = S.frames[S.fi] || (S.frames[S.fi] = []);
       const usedNums = Object.values(S.frames).flat().map(b => b.drone_num);
       const drone_num = usedNums.length ? Math.max(...usedNums) + 1 : 1;
-      boxes.push({ x1, y1, x2, y2, drone_num, drone_name: S.activeDrone.name, t: null, _isNew: true });
+      boxes.push({ x1, y1, x2, y2, drone_num, drone_name: S.activeDrone.name, t: newBoxT(S.fi) });
       S.selectedBox = { fi: S.fi, idx: boxes.length - 1 };
       pushFrameUpdate();
     }
@@ -465,30 +465,51 @@ function onMouseUp(e) {
 
 // ── Frame editing ─────────────────────────────────────────────────────────────
 
-// Serialised push queue — every update waits for the previous to finish,
-// so Save can await this and be sure the temp file is up to date.
+function newBoxT(fi) {
+  const w_s = S.seqData.window_s;
+  const t1  = (fi + 1) * w_s;
+  let t     = Math.floor(t1 * 1000) / 1000;
+  if (t >= t1 - 1e-9) t -= 0.001;
+  return Math.round(t * 1e6) / 1e6;
+}
+
+function markDirty() {
+  S.dirty = true;
+  renderSeqList();
+}
+
+// Push queue — serialises per-frame writes to temp.json so every edit lands on disk
 let _pushQueue = Promise.resolve();
 
 function pushFrameUpdate(fi = S.fi) {
   if (!S.seqData) return;
   const { split, seq } = S.seqData;
   const boxes = (S.frames[fi] || []).map(b => ({
-    x1: Math.round(b.x1 * 10) / 10,
-    y1: Math.round(b.y1 * 10) / 10,
-    x2: Math.round(b.x2 * 10) / 10,
-    y2: Math.round(b.y2 * 10) / 10,
+    t:          b.t,
+    x1:         Math.round(b.x1 * 10) / 10,
+    y1:         Math.round(b.y1 * 10) / 10,
+    x2:         Math.round(b.x2 * 10) / 10,
+    y2:         Math.round(b.y2 * 10) / 10,
     drone_num:  b.drone_num,
     drone_name: b.drone_name,
-    t: b._isNew ? null : (b.t ?? null),
   }));
-  _pushQueue = _pushQueue.then(() =>
-    fetch(`/api/gt/${split}/${seq}`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ fi, boxes }),
-    }).then(() => { S.dirty = true; renderSeqList(); })
-      .catch(err => console.error('pushFrameUpdate failed:', err))
-  );
+  _pushQueue = _pushQueue.then(async () => {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      await fetch(`/api/gt/${split}/${seq}`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ fi, boxes }),
+        signal:  ctrl.signal,
+      });
+      markDirty();
+    } catch (err) {
+      console.error('pushFrameUpdate failed:', err);
+    } finally {
+      clearTimeout(timer);
+    }
+  });
 }
 
 function deleteSelectedBox() {
@@ -534,7 +555,7 @@ function placeMemoriseBox(cx, cy) {
   const boxes    = S.frames[S.fi] || (S.frames[S.fi] = []);
   const usedNums = Object.values(S.frames).flat().map(b => b.drone_num);
   const drone_num = usedNums.length ? Math.max(...usedNums) + 1 : 1;
-  boxes.push({ x1, y1, x2, y2, drone_num, drone_name: S.activeDrone.name, t: null, _isNew: true });
+  boxes.push({ x1, y1, x2, y2, drone_num, drone_name: S.activeDrone.name, t: newBoxT(S.fi) });
   S.selectedBox = { fi: S.fi, idx: boxes.length - 1 };
   drawCanvas();
   pushFrameUpdate();
@@ -597,20 +618,18 @@ function expandBoxes() {
 
 function expandAllFromCurrent() {
   if (!S.seqData) return;
-  let changed = false;
   for (let f = S.fi; f < S.seqData.n_frames; f++) {
-    if (_scaleFrame(f, 1.1)) { pushFrameUpdate(f); changed = true; }
+    if (_scaleFrame(f, 1.1)) pushFrameUpdate(f);
   }
-  if (changed) drawCanvas();
+  drawCanvas();
 }
 
 function reduceAllFromCurrent() {
   if (!S.seqData) return;
-  let changed = false;
   for (let f = S.fi; f < S.seqData.n_frames; f++) {
-    if (_scaleFrame(f, 1 / 1.1)) { pushFrameUpdate(f); changed = true; }
+    if (_scaleFrame(f, 1 / 1.1)) pushFrameUpdate(f);
   }
-  if (changed) drawCanvas();
+  drawCanvas();
 }
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
@@ -696,6 +715,26 @@ elBtnErase.addEventListener('click', () => {
   pushFrameUpdate();
 });
 
+function _serializeRows() {
+  const rows = [];
+  const w_s = S.seqData.window_s;
+  for (const [fi, boxes] of Object.entries(S.frames)) {
+    for (const b of boxes) {
+      rows.push({
+        t:          b.t,
+        x1:         Math.round(b.x1 * 10) / 10,
+        y1:         Math.round(b.y1 * 10) / 10,
+        x2:         Math.round(b.x2 * 10) / 10,
+        y2:         Math.round(b.y2 * 10) / 10,
+        drone_num:  b.drone_num,
+        drone_name: b.drone_name,
+      });
+    }
+  }
+  rows.sort((a, b) => a.t - b.t);
+  return rows;
+}
+
 elBtnReload.addEventListener('click', async () => {
   if (!S.seqData) return;
   const { split, seq } = S.seqData;
@@ -705,7 +744,7 @@ elBtnReload.addEventListener('click', async () => {
   for (const [k, v] of Object.entries(fresh.frames)) {
     S.frames[parseInt(k)] = v.map(r => ({ ...r }));
   }
-  S.dirty       = fresh.has_temp;
+  S.dirty       = false;
   S.selectedBox = null;
   S.fi          = fi;
   drawCanvas();
@@ -718,38 +757,41 @@ elBtnReload.addEventListener('click', async () => {
 elBtnRevert.addEventListener('click', async () => {
   if (!S.seqData) return;
   const { split, seq } = S.seqData;
-  await fetch(`/api/revert_frame/${split}/${seq}/${S.fi}`, { method: 'POST' });
-  const fresh = await fetch(`/api/sequence/${split}/${seq}`).then(r => r.json());
   const fi = S.fi;
+  const res = await fetch(`/api/revert_frame/${split}/${seq}/${fi}`, { method: 'POST' }).then(r => r.json());
   delete S.frames[fi];
-  if (fresh.frames[String(fi)]) S.frames[fi] = fresh.frames[String(fi)].map(r => ({ ...r }));
+  if (res.rows && res.rows.length) S.frames[fi] = res.rows.map(r => ({ ...r }));
   S.selectedBox = null;
+  S.dirty = Object.values(S.frames).flat().some(b => true) ? S.dirty : false;
   drawCanvas();
-  updateSaveStatus('Reverted');
+  updateSaveStatus('Reverted frame', 'ok');
 });
 
 elBtnSave.addEventListener('click', async () => {
   if (!S.seqData) return;
   const { split, seq } = S.seqData;
-  await _pushQueue;  // wait for all in-flight frame updates to land first
-  const res = await fetch(`/api/save/${split}/${seq}`, { method: 'POST' }).then(r => r.json());
-  if (res.ok) {
-    S.dirty = false;
-    updateSaveStatus('Saved ✓', 'ok');
-    const s = S.seqList.find(s => s.split === split && s.seq === seq);
-    if (s) s.has_temp = false;
-    // Reload from disk to confirm what was written
-    const fresh = await fetch(`/api/sequence/${split}/${seq}`).then(r => r.json());
-    S.frames = {};
-    for (const [k, v] of Object.entries(fresh.frames)) {
-      S.frames[parseInt(k)] = v.map(r => ({ ...r }));
+  elBtnSave.disabled = true;
+  updateSaveStatus('Saving…');
+  try {
+    const res = await fetch(`/api/save/${split}/${seq}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ rows: _serializeRows() }),
+    }).then(r => r.json());
+    if (res.ok) {
+      S.dirty = false;
+      updateSaveStatus('Saved ✓', 'ok');
+      const s = S.seqList.find(s => s.split === split && s.seq === seq);
+      if (s) s.has_temp = false;
+      renderSeqList();
+    } else {
+      updateSaveStatus('Error: ' + res.error, 'error');
     }
-    S.selectedBox = null;
-    drawCanvas();
-    updateFrameLabel();
-    renderSeqList();
-  } else {
-    updateSaveStatus('Error: ' + res.error, 'error');
+  } catch (err) {
+    updateSaveStatus('Save failed', 'error');
+    console.error(err);
+  } finally {
+    elBtnSave.disabled = false;
   }
 });
 
@@ -763,7 +805,6 @@ elBtnRevertSeq.addEventListener('click', async () => {
   if (!S.seqData) return;
   if (!confirm('Revert entire sequence to original coordinates.txt? All unsaved changes will be lost.')) return;
   const { split, seq } = S.seqData;
-  await _pushQueue;
   const res = await fetch(`/api/revert_seq/${split}/${seq}`, { method: 'POST' }).then(r => r.json());
   if (res.ok) {
     S.frames = {};
@@ -782,6 +823,34 @@ elBtnRevertSeq.addEventListener('click', async () => {
     if (s) s.has_temp = false;
     renderSeqList();
   }
+});
+
+// Every 10 s silently commit to coordinates.txt
+setInterval(async () => {
+  if (!S.seqData || !S.dirty) return;
+  const { split, seq } = S.seqData;
+  try {
+    const res = await fetch(`/api/save/${split}/${seq}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ rows: _serializeRows() }),
+    }).then(r => r.json());
+    if (res.ok) {
+      S.dirty = false;
+      const s = S.seqList.find(s => s.split === split && s.seq === seq);
+      if (s) s.has_temp = false;
+      renderSeqList();
+    }
+  } catch (_) {}
+}, 10_000);
+
+// Final flush on normal tab close / navigation
+window.addEventListener('beforeunload', () => {
+  if (!S.seqData || !S.dirty) return;
+  const { split, seq } = S.seqData;
+  navigator.sendBeacon(`/api/autosave/${split}/${seq}`,
+    new Blob([JSON.stringify({ rows: _serializeRows() })], { type: 'application/json' })
+  );
 });
 
 // ── Time bar interaction ──────────────────────────────────────────────────────
