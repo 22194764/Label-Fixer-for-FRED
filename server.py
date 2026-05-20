@@ -24,7 +24,7 @@ from flask import Flask, jsonify, request, send_file, abort, render_template
 _caps: dict = {}       # (split, seq) -> {'cap', 'last_fi', 'lock'}
 
 ROOT        = Path(__file__).resolve().parent.parent.parent
-# ROOT        = Path(__file__).resolve()
+# ROOT        = Path(__file__).resolve().parent
 DATASET_DIR = ROOT / 'dataset'
 # DATASET_DIR = ROOT / 'samples'
 VIDEOS_DIR  = ROOT / 'analysis' / 'videos_test_equal_duration_GT'
