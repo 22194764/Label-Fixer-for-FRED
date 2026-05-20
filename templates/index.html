@@ -24,19 +24,20 @@
     <!-- Toolbar -->
     <div id="toolbar">
       <div id="toolbar-left">
-        <button id="btn-prev" title="Previous frame (←)">&#8592;</button>
+        <button id="btn-prev" title="Previous frame (A / ←)">&#8592;</button>
         <span id="frame-label">—</span>
-        <button id="btn-next" title="Next frame (→)">&#8594;</button>
+        <button id="btn-next" title="Next frame (D / →)">&#8594;</button>
         <button id="btn-play" title="Play/Pause (Space)">&#9654;</button>
         <button id="btn-2x">2x</button>
         <button id="btn-4x">4x</button>
-        <button id="btn-memorise" title="Memorise mode (M) — click to stamp last frame&#39;s biggest box">Memorise</button>
+        <button id="btn-memorise" title="Memorise mode (M) — click to stamp last annotated frame&#39;s biggest box">Memorise</button>
       </div>
       <div id="toolbar-center">
         <span id="seq-title">No sequence selected</span>
       </div>
       <div id="toolbar-right">
-        <button id="btn-erase-frame" title="Erase all boxes in this frame">Erase</button>
+        <button id="btn-help" title="Keyboard shortcuts &amp; help (?)">?</button>
+        <button id="btn-erase-frame" title="Erase all boxes in this frame (R)">Erase</button>
         <button id="btn-revert-frame" title="Revert this frame to original GT">Revert frame</button>
         <button id="btn-save" title="Save all changes to coordinates.txt">Save</button>
         <button id="btn-reload" title="Reload annotations from disk">Reload</button>
@@ -75,6 +76,62 @@
 
   </main>
 </div>
+<!-- Help modal -->
+<div id="help-overlay">
+  <div id="help-modal">
+    <div id="help-header">
+      <span>Keyboard Shortcuts &amp; Help</span>
+      <button id="help-close">&times;</button>
+    </div>
+    <div id="help-body">
+
+      <h3>Basic workflow</h3>
+      <ol>
+        <li>Select a sequence from the sidebar.</li>
+        <li>Click a drone name in the <strong>Active drone</strong> bar to select it.</li>
+        <li>Click and drag on the canvas to draw a bounding box.</li>
+        <li>Click <strong>Save</strong> when done — changes are staged in a temp file until then.</li>
+      </ol>
+
+      <h3>Navigation</h3>
+      <table>
+        <tr><td><kbd>D</kbd> / <kbd>→</kbd></td><td>Next frame</td></tr>
+        <tr><td><kbd>A</kbd> / <kbd>←</kbd></td><td>Previous frame</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>Play / Pause</td></tr>
+        <tr><td>Scroll wheel</td><td>Zoom in / out</td></tr>
+        <tr><td>Time bar</td><td>Click or drag to jump to any time</td></tr>
+      </table>
+
+      <h3>Editing</h3>
+      <table>
+        <tr><td>Drag on canvas</td><td>Draw new box (requires active drone)</td></tr>
+        <tr><td>Drag box interior</td><td>Move box</td></tr>
+        <tr><td>Drag box corner</td><td>Resize box</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Erase all boxes in current frame</td></tr>
+        <tr><td><kbd>E</kbd></td><td>Expand all boxes in current frame by 10%</td></tr>
+        <tr><td><kbd>Del</kbd> / <kbd>Backspace</kbd></td><td>Delete selected box</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Deselect active drone / selected box</td></tr>
+      </table>
+
+      <h3>Memorise mode</h3>
+      <table>
+        <tr><td><kbd>M</kbd></td><td>Toggle memorise mode on / off</td></tr>
+      </table>
+      <p>With memorise on, clicking the canvas places a box sized to match the largest box
+      in the last frame that has any annotation, centred on your click. Useful for quickly
+      filling annotation gaps when a drone is continuously visible.</p>
+
+      <h3>File operations</h3>
+      <table>
+        <tr><td><strong>Save</strong></td><td>Commit all changes to <code>coordinates.txt</code> (creates <code>.bak</code> on first save)</td></tr>
+        <tr><td><strong>Revert frame</strong></td><td>Reset current frame to original GT</td></tr>
+        <tr><td><strong>Reload</strong></td><td>Reload all annotations from disk</td></tr>
+      </table>
+
+    </div>
+  </div>
+</div>
+
 <script src="/static/app.js"></script>
 </body>
 </html>

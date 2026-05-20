@@ -114,22 +114,35 @@ The left panel lists every sequence in the configured split. Badges indicate:
 
 Click any sequence to open it.
 
-### Navigation
+A `?` button in the toolbar (also accessible by pressing `?`) opens an in-app help overlay with the full shortcut reference.
 
-| Action | Control |
+### Keyboard shortcuts
+
+#### Navigation
+| Key | Action |
 |---|---|
-| Next / previous frame | `→` / `←` arrow keys, or the `→` `←` buttons |
-| Jump to any time | Click or drag the time bar at the bottom |
-| Play / pause | `Space` or the `▶` button |
-| Playback speed | `2x` / `4x` buttons (toggle; click again to return to 1×) |
+| `D` / `→` | Next frame |
+| `A` / `←` | Previous frame |
+| `Space` | Play / Pause |
+| Scroll wheel | Zoom in / out |
+
+#### Editing
+| Key | Action |
+|---|---|
+| `R` | Erase all boxes in the current frame |
+| `E` | Expand all boxes in the current frame by 10% in width and height |
+| `M` | Toggle Memorise mode on / off |
+| `Del` / `Backspace` | Delete the selected box |
+| `Esc` | Deselect active drone / selected box |
+| `?` | Open / close help overlay |
 
 ### Drawing boxes
 
 1. Click a drone name in the **Active drone** bar to select it (highlighted border).
 2. Click and drag on the canvas to draw a bounding box.
 3. Click a box to select it; drag its corners to resize or drag its interior to move.
-4. Press `Esc` to deselect the active drone / selected box.
-5. Press `Delete` or `Backspace` to delete the selected box.
+4. Press `Esc` to deselect.
+5. Press `Del` or `Backspace` to delete the selected box.
 
 ### Memorise mode
 
@@ -137,7 +150,7 @@ Memorise mode lets you quickly stamp a box onto frames where the drone is presen
 
 1. Select the active drone.
 2. Press `M` (or click the **Memorise** button) to toggle memorise mode on — the button highlights.
-3. Click anywhere on the canvas. A box of the same size as the largest box in the **last frame that has any annotation** is centred on your click point.
+3. Click anywhere on the canvas. A box sized to match the largest box in the **last frame that has any annotation** is centred on your click point.
 4. Press `M` again to turn memorise mode off.
 
 This is particularly useful for filling gaps when a drone is continuously visible but annotations are missing for a run of frames.
@@ -146,7 +159,7 @@ This is particularly useful for filling gaps when a drone is continuously visibl
 
 | Button | Action |
 |---|---|
-| **Erase** | Remove all boxes from the current frame |
+| **Erase** (`R`) | Remove all boxes from the current frame |
 | **Revert frame** | Reset the current frame to the original `coordinates.txt` (or `.bak` if it exists) |
 | **Reload** | Reload all annotations from the temp file on disk |
 | **Save** | Commit all changes to `coordinates.txt` (a `.bak` backup is created on first save) |

@@ -17,6 +17,7 @@ const S = {
   drag:        null,
   selectedBox: null,
   seqList:     [],
+  zoom:        1.0,
 };
 
 const elCanvas     = document.getElementById('canvas');
@@ -33,6 +34,7 @@ const elBtn4x       = document.getElementById('btn-4x');
 const elBtnMemorise = document.getElementById('btn-memorise');
 const elBtnPrev    = document.getElementById('btn-prev');
 const elBtnNext    = document.getElementById('btn-next');
+const elBtnHelp    = document.getElementById('btn-help');
 const elBtnErase   = document.getElementById('btn-erase-frame');
 const elBtnSave    = document.getElementById('btn-save');
 const elBtnReload  = document.getElementById('btn-reload');
@@ -64,8 +66,8 @@ function fitCanvas() {
   const availW = elViewerOuter.clientWidth;
   const availH = elViewerOuter.clientHeight;
   const scale  = Math.min(availW / S.videoW, availH / S.videoH);
-  elCanvas.style.width  = Math.floor(S.videoW * scale) + 'px';
-  elCanvas.style.height = Math.floor(S.videoH * scale) + 'px';
+  elCanvas.style.width  = Math.floor(S.videoW * scale * S.zoom) + 'px';
+  elCanvas.style.height = Math.floor(S.videoH * scale * S.zoom) + 'px';
 }
 
 new ResizeObserver(fitCanvas).observe(elViewerOuter);
@@ -114,6 +116,7 @@ async function openSequence(split, seq) {
   S.activeDrone = null;
   S.selectedBox = null;
   S.dirty       = data.has_temp;
+  S.zoom        = 1.0;
   _pushQueue    = Promise.resolve();
   _frameCache.clear();
   _fetchInFlight.clear();
@@ -535,22 +538,88 @@ function placeMemoriseBox(cx, cy) {
   pushFrameUpdate();
 }
 
+// ── Zoom ─────────────────────────────────────────────────────────────────────
+
+elViewerOuter.addEventListener('wheel', (e) => {
+  e.preventDefault();
+
+  const factor  = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+  const newZoom = Math.max(0.25, Math.min(8, S.zoom * factor));
+  if (newZoom === S.zoom) return;
+
+  // Cursor's fractional position on the canvas before zoom
+  const viewerRect  = elViewerOuter.getBoundingClientRect();
+  const canvasRect  = elCanvas.getBoundingClientRect();
+  const fracX = (e.clientX - canvasRect.left)  / canvasRect.width;
+  const fracY = (e.clientY - canvasRect.top)   / canvasRect.height;
+
+  S.zoom = newZoom;
+  fitCanvas();
+
+  // New canvas CSS size (mirrors fitCanvas formula)
+  const scale  = Math.min(elViewerOuter.clientWidth  / S.videoW,
+                           elViewerOuter.clientHeight / S.videoH);
+  const newW   = Math.floor(S.videoW * scale * newZoom);
+  const newH   = Math.floor(S.videoH * scale * newZoom);
+
+  // Canvas origin in scroll-space (margin:auto centres when smaller than viewer)
+  const canvasLeft = Math.max(0, (elViewerOuter.clientWidth  - newW) / 2);
+  const canvasTop  = Math.max(0, (elViewerOuter.clientHeight - newH) / 2);
+
+  // Scroll so the canvas point under the cursor stays under the cursor
+  elViewerOuter.scrollLeft = canvasLeft + fracX * newW - (e.clientX - viewerRect.left);
+  elViewerOuter.scrollTop  = canvasTop  + fracY * newH - (e.clientY - viewerRect.top);
+}, { passive: false });
+
+// ── Expand boxes ──────────────────────────────────────────────────────────────
+
+function expandBoxes() {
+  const boxes = S.frames[S.fi];
+  if (!boxes || !boxes.length) return;
+  boxes.forEach(b => {
+    const cx = (b.x1 + b.x2) / 2;
+    const cy = (b.y1 + b.y2) / 2;
+    const w  = (b.x2 - b.x1) * 1.1;
+    const h  = (b.y2 - b.y1) * 1.1;
+    b.x1 = cx - w / 2;
+    b.y1 = cy - h / 2;
+    b.x2 = cx + w / 2;
+    b.y2 = cy + h / 2;
+  });
+  drawCanvas();
+  pushFrameUpdate();
+}
+
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 
 document.addEventListener('keydown', (e) => {
   if (document.activeElement === elSeqSearch) return;
+  if (e.key === 'Escape' && elHelpOverlay.classList.contains('visible')) {
+    toggleHelp(); return;
+  }
+  if (elHelpOverlay.classList.contains('visible')) return;
   switch (e.key) {
-    case 'ArrowLeft':  e.preventDefault(); seekToFrame(S.fi - 1); break;
-    case 'ArrowRight': e.preventDefault(); seekToFrame(S.fi + 1); break;
-    case ' ':          e.preventDefault(); togglePlay();           break;
-    case 'm':
-    case 'M':
-      toggleMemorise();
-      break;
+    case 'ArrowLeft':
+    case 'a': case 'A':
+      e.preventDefault(); seekToFrame(S.fi - 1); break;
+    case 'ArrowRight':
+    case 'd': case 'D':
+      e.preventDefault(); seekToFrame(S.fi + 1); break;
+    case ' ':
+      e.preventDefault(); togglePlay(); break;
+    case 'm': case 'M':
+      toggleMemorise(); break;
+    case 'r': case 'R':
+      if (!S.seqData) break;
+      S.frames[S.fi] = []; S.selectedBox = null;
+      drawCanvas(); pushFrameUpdate(); break;
+    case 'e': case 'E':
+      expandBoxes(); break;
+    case '?':
+      toggleHelp(); break;
     case 'Escape':
       S.activeDrone = null; S.selectedBox = null;
-      updateDroneBar(); drawCanvas();
-      break;
+      updateDroneBar(); drawCanvas(); break;
     case 'Delete':
     case 'Backspace':
       e.preventDefault(); deleteSelectedBox(); break;
@@ -679,6 +748,20 @@ elTimeBarTrack.addEventListener('mousedown', (e) => {
   const onMove = (e) => seekFromBar(e);
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onMove), { once: true });
+});
+
+// ── Help modal ────────────────────────────────────────────────────────────────
+
+const elHelpOverlay = document.getElementById('help-overlay');
+
+function toggleHelp() {
+  elHelpOverlay.classList.toggle('visible');
+}
+
+elBtnHelp.addEventListener('click', toggleHelp);
+document.getElementById('help-close').addEventListener('click', toggleHelp);
+elHelpOverlay.addEventListener('click', (e) => {
+  if (e.target === elHelpOverlay) toggleHelp();
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
