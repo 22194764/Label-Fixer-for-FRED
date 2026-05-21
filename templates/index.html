@@ -31,6 +31,7 @@
         <button id="btn-2x">2x</button>
         <button id="btn-4x">4x</button>
         <button id="btn-memorise" title="Memorise mode (M) — click to stamp last annotated frame&#39;s biggest box">Memorise</button>
+        <button id="btn-interpolate" title="Interpolate missing annotations between two frames">Interpolate</button>
         <button id="btn-expand-all" title="Expand all annotations from this frame onwards by 10%">Expand All</button>
         <button id="btn-reduce-all" title="Reduce all annotations from this frame onwards by 10%">Reduce All</button>
       </div>
@@ -50,6 +51,13 @@
 
     <!-- Drone selector -->
     <div id="drone-bar">
+      <span class="drone-bar-label">Drone rank:</span>
+      <div id="rank-buttons">
+        <button class="rank-btn selected" data-rank="1">#1</button>
+        <button class="rank-btn" data-rank="2">#2</button>
+        <button class="rank-btn" data-rank="3">#3</button>
+      </div>
+      <div class="drone-bar-sep"></div>
       <span class="drone-bar-label">Active drone:</span>
       <div id="drone-buttons"></div>
       <span class="drone-bar-hint">Esc to deselect &nbsp;|&nbsp; Del to remove selected box</span>
@@ -79,6 +87,40 @@
 
   </main>
 </div>
+<!-- Interpolate modal -->
+<div id="interp-overlay">
+  <div id="interp-modal">
+    <div id="interp-header">
+      <span>Interpolate Frames</span>
+      <button id="interp-close">&times;</button>
+    </div>
+    <div id="interp-body">
+      <p>Fills missing annotations between two frames by linearly interpolating from the nearest annotated frames on each side. Existing annotations are not overwritten.</p>
+      <div class="interp-row">
+        <label>Drone rank</label>
+        <div id="interp-rank-buttons">
+          <button class="rank-btn selected" data-rank="1">#1</button>
+          <button class="rank-btn" data-rank="2">#2</button>
+          <button class="rank-btn" data-rank="3">#3</button>
+        </div>
+      </div>
+      <div class="interp-row">
+        <label for="interp-start">Start frame</label>
+        <input id="interp-start" type="number" min="0" step="1" placeholder="0">
+      </div>
+      <div class="interp-row">
+        <label for="interp-end">End frame</label>
+        <input id="interp-end" type="number" min="0" step="1" placeholder="0">
+      </div>
+      <div id="interp-hint"></div>
+    </div>
+    <div id="interp-footer">
+      <button id="interp-cancel">Cancel</button>
+      <button id="interp-submit">Interpolate</button>
+    </div>
+  </div>
+</div>
+
 <!-- Help modal -->
 <div id="help-overlay">
   <div id="help-modal">
@@ -129,6 +171,7 @@
         <tr><td><strong>Save</strong></td><td>Commit all changes to <code>coordinates.txt</code> (creates <code>.bak</code> on first save)</td></tr>
         <tr><td><strong>Revert frame</strong></td><td>Reset current frame to original GT</td></tr>
         <tr><td><strong>Revert Seq</strong></td><td>Discard all unsaved changes and restore entire sequence to original GT</td></tr>
+        <tr><td><strong>Interpolate</strong></td><td>Fill missing annotations between two frames by linear interpolation</td></tr>
         <tr><td><strong>Expand All</strong></td><td>Expand annotations in current frame and all subsequent frames by 10%</td></tr>
         <tr><td><strong>Reduce All</strong></td><td>Reduce annotations in current frame and all subsequent frames by 10%</td></tr>
         <tr><td><strong>Reload</strong></td><td>Reload all annotations from disk</td></tr>
