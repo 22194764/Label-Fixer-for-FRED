@@ -211,11 +211,15 @@ def api_sequence(split, seq):
 
     rows = load_temp(split, seq)
 
-    # Derive frame count from annotations (authoritative).
-    # Do NOT use CAP_PROP_FRAME_COUNT — OpenCV duplicates the last frame on
-    # release, giving one phantom extra frame with no annotations.
+    # Prefer video frame count so the full video is navigable even beyond
+    # the last annotated frame. Fall back to annotation-derived count.
+    vp = video_path(split, seq)
     n_frames = 0
-    if rows:
+    if vp.exists():
+        cap = cv2.VideoCapture(str(vp))
+        n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+    if n_frames <= 0 and rows:
         last_t = max(r['t'] for r in rows)
         n_frames = frame_index(last_t) + 1
 

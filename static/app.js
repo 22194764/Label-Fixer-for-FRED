@@ -8,6 +8,7 @@ const S = {
   frames:      {},
   fi:          0,
   activeDrone: null,
+  activeRank:  1,
   dirty:       false,
   videoW:      1,
   videoH:      1,
@@ -28,12 +29,20 @@ const elSeqTitle   = document.getElementById('seq-title');
 const elFrameLabel = document.getElementById('frame-label');
 const elFrameInfo  = document.getElementById('frame-info-text');
 const elDroneBar   = document.getElementById('drone-buttons');
+const elRankBar    = document.getElementById('rank-buttons');
 const elBtnPlay    = document.getElementById('btn-play');
 const elBtn2x       = document.getElementById('btn-2x');
 const elBtn4x       = document.getElementById('btn-4x');
 const elBtnMemorise   = document.getElementById('btn-memorise');
-const elBtnExpandAll  = document.getElementById('btn-expand-all');
-const elBtnReduceAll  = document.getElementById('btn-reduce-all');
+const elBtnExpandAll    = document.getElementById('btn-expand-all');
+const elBtnReduceAll    = document.getElementById('btn-reduce-all');
+const elBtnInterpolate      = document.getElementById('btn-interpolate');
+const elInterpOverlay       = document.getElementById('interp-overlay');
+const elInterpStart         = document.getElementById('interp-start');
+const elInterpEnd           = document.getElementById('interp-end');
+const elInterpHint          = document.getElementById('interp-hint');
+const elInterpSubmit        = document.getElementById('interp-submit');
+const elInterpRankButtons   = document.getElementById('interp-rank-buttons');
 const elBtnPrev       = document.getElementById('btn-prev');
 const elBtnNext       = document.getElementById('btn-next');
 const elBtnHelp       = document.getElementById('btn-help');
@@ -148,6 +157,13 @@ function buildDroneBar(names) {
   });
 }
 
+elRankBar.querySelectorAll('.rank-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    S.activeRank = parseInt(btn.dataset.rank);
+    updateDroneBar();
+  });
+});
+
 function selectDrone(idx) {
   const name = S.seqData.drone_names[idx];
   const col  = DRONE_COLOURS[idx] || '#ffffff';
@@ -161,6 +177,9 @@ function selectDrone(idx) {
 function updateDroneBar() {
   for (const btn of elDroneBar.querySelectorAll('.drone-btn')) {
     btn.classList.toggle('selected', S.activeDrone && S.activeDrone.idx === parseInt(btn.dataset.idx));
+  }
+  for (const btn of elRankBar.querySelectorAll('.rank-btn')) {
+    btn.classList.toggle('selected', parseInt(btn.dataset.rank) === S.activeRank);
   }
 }
 
@@ -297,7 +316,7 @@ function drawCanvas() {
     ctx.strokeRect(b.x1, b.y1, b.x2 - b.x1, b.y2 - b.y1);
     ctx.setLineDash([]);
 
-    const label = b.drone_name || 'drone';
+    const label = `#${b.drone_num} ${b.drone_name || 'drone'}`;
     ctx.font = '12px Segoe UI, sans-serif';
     const tw = ctx.measureText(label).width;
     const ty = b.y1 > 18 ? b.y1 - 4 : b.y2 + 16;
@@ -444,8 +463,7 @@ function onMouseUp(e) {
     const y2 = Math.max(S.drag.y0, S.drag.y1);
     if (x2 - x1 > 4 && y2 - y1 > 4 && S.activeDrone) {
       const boxes = S.frames[S.fi] || (S.frames[S.fi] = []);
-      const usedNums = Object.values(S.frames).flat().map(b => b.drone_num);
-      const drone_num = usedNums.length ? Math.max(...usedNums) + 1 : 1;
+      const drone_num = S.activeRank;
       boxes.push({ x1, y1, x2, y2, drone_num, drone_name: S.activeDrone.name, t: newBoxT(S.fi) });
       S.selectedBox = { fi: S.fi, idx: boxes.length - 1 };
       pushFrameUpdate();
@@ -472,6 +490,7 @@ function newBoxT(fi) {
   if (t >= t1 - 1e-9) t -= 0.001;
   return Math.round(t * 1e6) / 1e6;
 }
+
 
 function markDirty() {
   S.dirty = true;
@@ -529,21 +548,15 @@ function toggleMemorise() {
   elBtnMemorise.classList.toggle('selected', S.memorise);
 }
 
-function _biggestBoxInFrame(fi) {
-  const boxes = S.frames[fi] || [];
-  if (!boxes.length) return null;
-  return boxes.reduce((best, b) => {
-    const area = (b.x2 - b.x1) * (b.y2 - b.y1);
-    return area > (best.x2 - best.x1) * (best.y2 - best.y1) ? b : best;
-  });
-}
 
 function placeMemoriseBox(cx, cy) {
   if (!S.activeDrone) return;
   let ref = null;
   for (let f = S.fi - 1; f >= 0; f--) {
-    ref = _biggestBoxInFrame(f);
-    if (ref) break;
+    const match = (S.frames[f] || []).find(
+      b => b.drone_name === S.activeDrone.name && b.drone_num === S.activeRank
+    );
+    if (match) { ref = match; break; }
   }
   if (!ref) return;
   const w  = ref.x2 - ref.x1;
@@ -553,9 +566,7 @@ function placeMemoriseBox(cx, cy) {
   const x2 = cx + w / 2;
   const y2 = cy + h / 2;
   const boxes    = S.frames[S.fi] || (S.frames[S.fi] = []);
-  const usedNums = Object.values(S.frames).flat().map(b => b.drone_num);
-  const drone_num = usedNums.length ? Math.max(...usedNums) + 1 : 1;
-  boxes.push({ x1, y1, x2, y2, drone_num, drone_name: S.activeDrone.name, t: newBoxT(S.fi) });
+  boxes.push({ x1, y1, x2, y2, drone_num: S.activeRank, drone_name: S.activeDrone.name, t: newBoxT(S.fi) });
   S.selectedBox = { fi: S.fi, idx: boxes.length - 1 };
   drawCanvas();
   pushFrameUpdate();
@@ -632,6 +643,120 @@ function reduceAllFromCurrent() {
   drawCanvas();
 }
 
+// ── Interpolation ─────────────────────────────────────────────────────────────
+
+let _interpRank = 1;
+
+function interpolateFrames(startFi, endFi, rank) {
+  // Collect unique drones matching the requested rank
+  const allBoxes = Object.values(S.frames).flat();
+  const droneKeys = [...new Set(
+    allBoxes.filter(b => b.drone_num === rank).map(b => `${b.drone_num}\t${b.drone_name}`)
+  )];
+  let filled = 0;
+
+  for (const key of droneKeys) {
+    const [numStr, drone_name] = key.split('\t');
+    const drone_num = parseInt(numStr);
+
+    for (let fi = startFi; fi <= endFi; fi++) {
+      // Skip frames that already have this drone annotated
+      if ((S.frames[fi] || []).some(b => b.drone_num === drone_num && b.drone_name === drone_name)) continue;
+
+      // Find nearest previous frame with this drone
+      let prevFi = null, prevBox = null;
+      for (let f = fi - 1; f >= 0; f--) {
+        const b = (S.frames[f] || []).find(b => b.drone_num === drone_num && b.drone_name === drone_name);
+        if (b) { prevFi = f; prevBox = b; break; }
+      }
+
+      // Find nearest next frame with this drone
+      let nextFi = null, nextBox = null;
+      for (let f = fi + 1; f < S.seqData.n_frames; f++) {
+        const b = (S.frames[f] || []).find(b => b.drone_num === drone_num && b.drone_name === drone_name);
+        if (b) { nextFi = f; nextBox = b; break; }
+      }
+
+      if (prevBox === null || nextBox === null) continue;
+
+      const t = (fi - prevFi) / (nextFi - prevFi);
+      const lerp = (a, b) => a + (b - a) * t;
+      if (!S.frames[fi]) S.frames[fi] = [];
+      S.frames[fi].push({
+        x1: lerp(prevBox.x1, nextBox.x1),
+        y1: lerp(prevBox.y1, nextBox.y1),
+        x2: lerp(prevBox.x2, nextBox.x2),
+        y2: lerp(prevBox.y2, nextBox.y2),
+        drone_num, drone_name,
+        t: newBoxT(fi),
+      });
+      filled++;
+    }
+  }
+
+  if (filled > 0) {
+    for (let fi = startFi; fi <= endFi; fi++) {
+      if (S.frames[fi] && S.frames[fi].length) pushFrameUpdate(fi);
+    }
+    drawCanvas();
+  }
+  return filled;
+}
+
+function openInterpModal() {
+  if (!S.seqData) return;
+  elInterpStart.value = S.fi;
+  elInterpEnd.value   = '';
+  elInterpHint.textContent = `Valid range: 0 – ${S.seqData.n_frames - 1}`;
+  elInterpHint.className   = '';
+  elInterpRankButtons.querySelectorAll('.rank-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.dataset.rank) === _interpRank);
+  });
+  elInterpOverlay.classList.add('visible');
+  elInterpEnd.focus();
+}
+
+function closeInterpModal() {
+  elInterpOverlay.classList.remove('visible');
+}
+
+elBtnInterpolate.addEventListener('click', openInterpModal);
+document.getElementById('interp-close').addEventListener('click', closeInterpModal);
+document.getElementById('interp-cancel').addEventListener('click', closeInterpModal);
+elInterpOverlay.addEventListener('click', e => { if (e.target === elInterpOverlay) closeInterpModal(); });
+
+elInterpRankButtons.querySelectorAll('.rank-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    _interpRank = parseInt(btn.dataset.rank);
+    elInterpRankButtons.querySelectorAll('.rank-btn').forEach(b =>
+      b.classList.toggle('selected', parseInt(b.dataset.rank) === _interpRank)
+    );
+  });
+});
+
+elInterpSubmit.addEventListener('click', () => {
+  const startFi = parseInt(elInterpStart.value);
+  const endFi   = parseInt(elInterpEnd.value);
+  const max     = S.seqData.n_frames - 1;
+
+  if (isNaN(startFi) || isNaN(endFi) || startFi < 0 || endFi > max || startFi >= endFi) {
+    elInterpHint.textContent = `Invalid range. Enter two frame numbers between 0 and ${max}, start < end.`;
+    elInterpHint.className   = 'error';
+    return;
+  }
+
+  const filled = interpolateFrames(startFi, endFi, _interpRank);
+  elInterpHint.textContent = filled > 0 ? `Filled ${filled} annotation${filled > 1 ? 's' : ''} across ${endFi - startFi + 1} frames.` : 'Nothing to interpolate — no gaps found in range.';
+  elInterpHint.className   = filled > 0 ? 'ok' : '';
+});
+
+// Close interp modal on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && elInterpOverlay.classList.contains('visible')) {
+    closeInterpModal();
+  }
+}, true);
+
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 
 document.addEventListener('keydown', (e) => {
@@ -640,6 +765,7 @@ document.addEventListener('keydown', (e) => {
     toggleHelp(); return;
   }
   if (elHelpOverlay.classList.contains('visible')) return;
+  if (elInterpOverlay.classList.contains('visible')) return;
   switch (e.key) {
     case 'ArrowLeft':
     case 'a': case 'A':
